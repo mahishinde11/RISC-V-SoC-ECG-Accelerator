@@ -1,0 +1,40 @@
+# Makefile for RISC-V SoC Firmware
+
+# Output Directory
+OUT_DIR = output
+
+# Local Toolchain Path
+TOOLCHAIN_PATH = $(CURDIR)/../RISC V BASE SOC/riscv-toolchain/xpack-riscv-none-elf-gcc-13.2.0-2/bin/
+CROSS_COMPILE = "$(TOOLCHAIN_PATH)riscv-none-elf-"
+CC = $(CROSS_COMPILE)gcc
+OBJCOPY = $(CROSS_COMPILE)objcopy
+OBJDUMP = $(CROSS_COMPILE)objdump
+
+# RV32I Architecture
+CFLAGS = -march=rv32i -mabi=ilp32 -O2 -nostdlib -ffreestanding -Wall
+LDFLAGS = -T link.ld -lgcc
+
+TARGET = $(OUT_DIR)/firmware
+SRCS = start.S main.c
+
+all: $(OUT_DIR) $(TARGET).hex
+
+$(OUT_DIR):
+	if not exist $(OUT_DIR) mkdir $(OUT_DIR)
+
+$(TARGET).elf: $(SRCS) link.ld | $(OUT_DIR)
+	$(CC) $(CFLAGS) $(SRCS) -o $@ $(LDFLAGS)
+
+$(TARGET).bin: $(TARGET).elf
+	$(OBJCOPY) -O binary $< $@
+
+$(TARGET).hex: $(TARGET).bin
+	python bin2hex.py $< $@
+
+clean:
+	if exist $(OUT_DIR) rmdir /s /q $(OUT_DIR)
+
+disasm: $(TARGET).elf
+	$(OBJDUMP) -D $< > $(TARGET).dis
+
+.PHONY: all clean disasm
